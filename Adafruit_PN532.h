@@ -31,7 +31,7 @@
 #define ADAFRUIT_PN532_H
 
 #include "Arduino.h"
-#include <Adafruit_SPIDevice.h>
+#include "SPIDevice.h"
 
 #define PN532_PREAMBLE (0x00)
 #define PN532_STARTCODE1 (0x00)
@@ -221,7 +221,7 @@ private:
   bool readack();
 
   // SPI-specific functions.
-  Adafruit_SPIDevice *spi_dev = NULL;
+  SPISlaveDevice *spi_dev = NULL;
 
   // Note there are i2c_read and i2c_write inline functions defined in the .cpp
   // file.

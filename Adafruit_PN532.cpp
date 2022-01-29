@@ -122,8 +122,16 @@ static inline uint8_t i2c_recv(void) {
 /**************************************************************************/
 Adafruit_PN532::Adafruit_PN532(uint8_t clk, uint8_t miso, uint8_t mosi,
                                uint8_t ss) {
-  spi_dev = new Adafruit_SPIDevice(ss, clk, miso, mosi, 1000000,
-                                   SPI_BITORDER_LSBFIRST, SPI_MODE0);
+
+  SPISlaveDevice::Config config;
+
+  config.clkPin = clk;
+  config.misoPin = miso;
+  config.mosiPin = mosi;
+  config.csPin = ss;
+  config.host = VSPI_HOST;
+
+  spi_dev = new SPISlaveDevice(config);
 }
 
 /**************************************************************************/
@@ -148,8 +156,15 @@ Adafruit_PN532::Adafruit_PN532(uint8_t irq, uint8_t reset)
 */
 /**************************************************************************/
 Adafruit_PN532::Adafruit_PN532(uint8_t ss) {
-  spi_dev =
-      new Adafruit_SPIDevice(ss, 1000000, SPI_BITORDER_LSBFIRST, SPI_MODE0);
+  SPISlaveDevice::Config config;
+
+  config.clkPin = 18;
+  config.misoPin = 19;
+  config.mosiPin = 23;
+  config.csPin = ss;
+  config.host = VSPI_HOST;
+
+  spi_dev = new SPISlaveDevice(config);
 }
 
 /**************************************************************************/
@@ -160,7 +175,7 @@ Adafruit_PN532::Adafruit_PN532(uint8_t ss) {
 void Adafruit_PN532::begin() {
   if (spi_dev != NULL) {
     // SPI initialization
-    spi_dev->begin();
+    spi_dev->configure(100000);
 
     // not exactly sure why but we have to send a dummy command to get synced up
     pn532_packetbuffer[0] = PN532_COMMAND_GETFIRMWAREVERSION;
@@ -1493,7 +1508,7 @@ bool Adafruit_PN532::readack() {
 
   if (spi_dev) {
     uint8_t cmd = PN532_SPI_DATAREAD;
-    spi_dev->write_then_read(&cmd, 1, ackbuff, 6);
+    spi_dev->transmitReceive(&cmd, 1, ackbuff, 6);
   } else {
     readdata(ackbuff, 6);
   }
@@ -1510,9 +1525,9 @@ bool Adafruit_PN532::isready() {
   if (spi_dev != NULL) {
     uint8_t cmd = PN532_SPI_STATREAD;
     uint8_t reply;
-    spi_dev->write_then_read(&cmd, 1, &reply, 1);
+    spi_dev->transmitReceive(&cmd, 1, &reply, 1);
     // Check if status is ready.
-    // Serial.print("Ready? 0x"); Serial.println(reply, HEX);
+    //Serial.print("Ready? 0x"); Serial.println(reply, HEX);
     return reply == PN532_SPI_READY;
   } else {
     // I2C check if status is ready by IRQ line being pulled low.
@@ -1557,7 +1572,7 @@ void Adafruit_PN532::readdata(uint8_t *buff, uint8_t n) {
   if (spi_dev) {
     uint8_t cmd = PN532_SPI_DATAREAD;
 
-    spi_dev->write_then_read(&cmd, 1, buff, n);
+    spi_dev->transmitReceive(&cmd, 1, buff, n);
 
 #ifdef PN532DEBUG
     PN532DEBUGPRINT.print(F("Reading: "));
@@ -1751,7 +1766,7 @@ void Adafruit_PN532::writecommand(uint8_t *cmd, uint8_t cmdlen) {
     Serial.println();
 #endif
 
-    spi_dev->write(packet, 8 + cmdlen);
+    spi_dev->transmit(packet, 8 + cmdlen);
   } else {
     // I2C command write.
     uint8_t checksum;
